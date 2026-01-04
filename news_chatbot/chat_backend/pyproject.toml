@@ -1,0 +1,22 @@
+[project]
+name = "chat-backend"
+version = "0.1.0"
+description = "News chatbot chat backend with OpenAI Agent SDK"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "pydantic-settings>=2.7.0",
+    "openai-agents>=0.0.3",
+    "httpx>=0.28.0",
+    "loguru>=0.7.0",
+    "python-dotenv>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "debugpy>=1.8.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]

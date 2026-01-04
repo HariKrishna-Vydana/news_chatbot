@@ -1,0 +1,65 @@
+services:
+  chat_backend:
+    build:
+      context: ./chat_backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:8000"
+      - "5678:5678"  # debugpy
+    env_file:
+      - .env
+    environment:
+      - CHAT_BACKEND_HOST=0.0.0.0
+      - CHAT_BACKEND_PORT=8000
+    volumes:
+      - ./chat_backend:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - news-chatbot-network
+
+  voice_backend:
+    build:
+      context: ./voice_backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "7860:7860"
+      - "5679:5679"  # debugpy
+    env_file:
+      - .env
+    environment:
+      - VOICE_BACKEND_HOST=0.0.0.0
+      - VOICE_BACKEND_PORT=7860
+      - CHAT_BACKEND_HOST=chat_backend
+      - CHAT_BACKEND_PORT=8000
+    volumes:
+      - ./voice_backend:/app
+    depends_on:
+      chat_backend:
+        condition: service_healthy
+    networks:
+      - news-chatbot-network
+
+  web_client:
+    build:
+      context: ./web_client
+      dockerfile: Dockerfile.dev
+    ports:
+      - "80:5173"
+    environment:
+      - VITE_VOICE_BACKEND_URL=http://localhost:7860
+    volumes:
+      - ./web_client:/app
+      - /app/node_modules
+    depends_on:
+      - voice_backend
+    networks:
+      - news-chatbot-network
+
+networks:
+  news-chatbot-network:
+    driver: bridge
