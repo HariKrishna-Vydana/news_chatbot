@@ -19,5 +19,5 @@ def create_news_agent() -> Agent:
         name="NewsBot",
         instructions=NEWS_AGENT_INSTRUCTIONS,
         tools=[search_news],
-        model="gpt-4o",
+        model="gpt-4o-mini",
     )

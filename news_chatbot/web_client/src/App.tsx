@@ -2,7 +2,8 @@ import { useState, useCallback, useRef } from 'react';
 import { PipecatClient, RTVIEvent } from '@pipecat-ai/client-js';
 import { DailyTransport } from '@pipecat-ai/daily-transport';
 import { WebSocketTransport } from '@pipecat-ai/websocket-transport';
-import { TransportType, DEFAULT_TRANSPORT, VOICE_BACKEND_URL } from './config';
+import { SmallWebRTCTransport } from '@pipecat-ai/small-webrtc-transport';
+import { TransportType, DEFAULT_TRANSPORT, VOICE_BACKEND_URL, ICE_SERVERS } from './config';
 
 interface TranscriptMessage {
   role: 'user' | 'bot';
@@ -25,8 +26,14 @@ function App() {
         return new DailyTransport();
       case 'websocket':
         return new WebSocketTransport();
+      case 'smallwebrtc':
+        return new SmallWebRTCTransport({
+          iceServers: ICE_SERVERS,
+        });
       default:
-        return new DailyTransport();
+        return new SmallWebRTCTransport({
+          iceServers: ICE_SERVERS,
+        });
     }
   };
 
@@ -93,17 +100,24 @@ function App() {
         }
       });
 
+      const backendUrl = VOICE_BACKEND_URL || 'http://localhost:7860';
+
       if (transportType === 'websocket') {
         // For WebSocket, first get the ws_url from backend, then connect directly
-        const response = await fetch(`${VOICE_BACKEND_URL || 'http://localhost:7860'}/connect`, {
+        const response = await fetch(`${backendUrl}/connect`, {
           method: 'POST',
         });
         const data = await response.json();
         await client.connect({ wsUrl: data.ws_url });
+      } else if (transportType === 'smallwebrtc') {
+        // For SmallWebRTC, use the /api/offer endpoint
+        await client.connect({
+          webrtcUrl: `${backendUrl}/api/offer`,
+        });
       } else {
         // For Daily, use the standard connect flow
         const connectParams = {
-          endpoint: `${VOICE_BACKEND_URL || 'http://localhost:7860'}/connect`,
+          endpoint: `${backendUrl}/connect`,
         };
         await client.connect(connectParams);
       }
@@ -144,6 +158,7 @@ function App() {
             disabled={isConnected || isConnecting}
             style={styles.select}
           >
+            <option value="smallwebrtc">WebRTC (P2P)</option>
             <option value="daily">Daily WebRTC</option>
             <option value="websocket">WebSocket</option>
           </select>

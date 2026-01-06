@@ -13,8 +13,8 @@ class VoiceBackendSettings(BaseSettings):
     host: str = Field(default="0.0.0.0", alias="VOICE_BACKEND_HOST")
     port: int = Field(default=7860, alias="VOICE_BACKEND_PORT")
 
-    transport_type: Literal["daily", "websocket"] = Field(
-        default="daily", alias="TRANSPORT_TYPE"
+    transport_type: Literal["daily", "websocket", "smallwebrtc"] = Field(
+        default="smallwebrtc", alias="TRANSPORT_TYPE"
     )
 
     tts_provider: Literal["elevenlabs", "cartesia", "openai"] = Field(

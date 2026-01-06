@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "News chatbot voice backend with pipecat multi-transport support"
 requires-python = ">=3.10"
 dependencies = [
-    "pipecat-ai[daily,deepgram,cartesia,elevenlabs,openai,silero,websocket]>=0.0.98",
+    "pipecat-ai[cartesia,daily,deepgram,elevenlabs,openai,silero,webrtc,websocket]>=0.0.98",
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.34.0",
     "pydantic-settings>=2.7.0",
@@ -14,6 +14,7 @@ dependencies = [
     "aiohttp>=3.11.0",
     "aiortc>=1.10.0",
     "opencv-python>=4.8.0",
+    "pipecat-ai-small-webrtc-prebuilt>=2.0.4",
 ]
 
 [dependency-groups]
