@@ -23,12 +23,11 @@ from clients.chat_client import ChatClient
 
 
 class NewsAgentLLMService(LLMService):
-    """Custom LLM service using news agent chat backend."""
 
-    def __init__(self, session_id: str, **kwargs):
+    def __init__(self, session_id: str, system_prompt: str = None, **kwargs):
         super().__init__(**kwargs)
-        self.client = ChatClient(session_id)
-        logger.info(f"NewsAgentLLMService initialized with session: {session_id}")
+        self.client = ChatClient(session_id, system_prompt)
+        logger.info(f"NewsAgentLLMService initialized, session: {session_id}, has_prompt: {system_prompt is not None}")
 
     async def _process_context(self, messages: List[Dict[str, Any]]):
         """Process messages and stream response from chat backend."""

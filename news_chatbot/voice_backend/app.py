@@ -1,10 +1,11 @@
-import os
 import uuid
 from contextlib import asynccontextmanager
+from typing import Optional
 import aiohttp
 import uvicorn
-from fastapi import FastAPI, WebSocket, BackgroundTasks
+from fastapi import FastAPI, WebSocket, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from loguru import logger
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 
@@ -13,6 +14,11 @@ from bots.news_bot import run_bot
 
 daily_rest_helper = None
 aiohttp_session = None
+session_prompts: dict[str, str] = {}
+
+
+class ConnectRequest(BaseModel):
+    system_prompt: Optional[str] = None
 
 
 @asynccontextmanager
@@ -64,7 +70,13 @@ async def health_check():
 
 
 @app.post("/connect")
-async def connect():
+async def connect(request: ConnectRequest = None):
+    session_id = str(uuid.uuid4())
+
+    if request and request.system_prompt:
+        session_prompts[session_id] = request.system_prompt
+        logger.info(f"Stored system prompt for session {session_id}")
+
     if settings.transport_type == "daily":
         if not daily_rest_helper:
             return {"error": "Daily API key not configured"}
@@ -76,13 +88,15 @@ async def connect():
         return {
             "transport": "daily",
             "room_url": room.url,
-            "token": token
+            "token": token,
+            "session_id": session_id
         }
 
     elif settings.transport_type == "websocket":
         return {
             "transport": "websocket",
-            "ws_url": f"ws://localhost:{settings.port}/ws"
+            "ws_url": f"ws://localhost:{settings.port}/ws?session_id={session_id}",
+            "session_id": session_id
         }
 
     return {"error": f"Unknown transport type: {settings.transport_type}"}
@@ -127,10 +141,14 @@ async def daily_connect(background_tasks: BackgroundTasks):
 
 # WebSocket Transport
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket, session_id: str = Query(None)):
     await websocket.accept()
-    session_id = str(uuid.uuid4())
-    logger.info(f"WebSocket connected, session: {session_id}")
+
+    if not session_id:
+        session_id = str(uuid.uuid4())
+
+    system_prompt = session_prompts.pop(session_id, None)
+    logger.info(f"WebSocket connected, session: {session_id}, has_prompt: {system_prompt is not None}")
 
     from pipecat.serializers.protobuf import ProtobufFrameSerializer
     from pipecat.transports.websocket.fastapi import (
@@ -149,7 +167,7 @@ async def websocket_endpoint(websocket: WebSocket):
         ),
     )
 
-    await run_bot(transport, session_id)
+    await run_bot(transport, session_id, system_prompt)
 
 
 if __name__ == "__main__":

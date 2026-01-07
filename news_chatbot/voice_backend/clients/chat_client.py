@@ -6,13 +6,14 @@ from utils.settings import settings
 
 
 class ChatClient:
-    def __init__(self, session_id: str):
+    def __init__(self, session_id: str, system_prompt: str = None):
         self.session_id = session_id
+        self.system_prompt = system_prompt
         self.base_url = f"http://{settings.chat_backend_host}:{settings.chat_backend_port}"
         self.stream_endpoint = f"{self.base_url}/api/chat/stream"
         self.client: Optional[httpx.AsyncClient] = None
 
-        logger.info(f"ChatClient initialized: {self.base_url}, session: {session_id}")
+        logger.info(f"ChatClient initialized: {self.base_url}, session: {session_id}, has_prompt: {system_prompt is not None}")
 
     async def connect(self):
         if not self.client:
@@ -38,7 +39,8 @@ class ChatClient:
             json={
                 "message": message,
                 "session_id": self.session_id,
-                "history": []  # Server manages history via session_id
+                "history": [],
+                "system_prompt": self.system_prompt
             },
             timeout=settings.chat_timeout
         ) as response:

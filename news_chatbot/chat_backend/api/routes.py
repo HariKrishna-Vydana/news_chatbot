@@ -8,6 +8,7 @@ from openai.types.responses import ResponseTextDeltaEvent
 from loguru import logger
 
 from business_agents.agents.news_agent import create_news_agent
+from business_agents.agents.agent_definitions import get_agents
 
 router = APIRouter()
 
@@ -15,12 +16,11 @@ router = APIRouter()
 session_cache: Dict[str, Dict[str, Any]] = {}
 
 
-def get_or_create_session(session_id: str) -> Dict[str, Any]:
-    """Get existing session or create new one with agent and empty history."""
+def get_or_create_session(session_id: str, system_prompt: str = None) -> Dict[str, Any]:
     if session_id not in session_cache:
-        logger.info(f"Creating new session: {session_id}")
+        logger.info(f"Creating new session: {session_id}, custom_prompt: {system_prompt is not None}")
         session_cache[session_id] = {
-            "agent": create_news_agent(),
+            "agent": create_news_agent(system_prompt),
             "messages": []
         }
     return session_cache[session_id]
@@ -37,6 +37,7 @@ class ChatRequest(BaseModel):
     message: str
     session_id: str
     history: list[dict] = []
+    system_prompt: str = None
 
 
 @router.get("/health")
@@ -44,12 +45,17 @@ async def health_check():
     return {"status": "healthy", "service": "chat_backend"}
 
 
+@router.get("/agents")
+async def list_agents():
+    return {"agents": get_agents()}
+
+
 @router.post("/chat/stream")
 async def stream_chat(request: ChatRequest):
     async def generate():
         try:
             # Get or create cached session
-            session = get_or_create_session(request.session_id)
+            session = get_or_create_session(request.session_id, request.system_prompt)
             agent = session["agent"]
             messages = session["messages"]
 
@@ -57,7 +63,6 @@ async def stream_chat(request: ChatRequest):
             messages.append({"role": "user", "content": request.message})
 
             logger.info(f"Session {request.session_id}: {len(messages)} messages")
-            logger.debug(f"Messages: {messages}")
 
             # Pass messages to agent
             result = Runner.run_streamed(agent, input=messages)
@@ -99,7 +104,7 @@ async def stream_chat(request: ChatRequest):
 async def chat(request: ChatRequest):
     try:
         # Get or create cached session
-        session = get_or_create_session(request.session_id)
+        session = get_or_create_session(request.session_id, request.system_prompt)
         agent = session["agent"]
         messages = session["messages"]
 

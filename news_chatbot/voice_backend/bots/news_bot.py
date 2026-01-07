@@ -22,26 +22,17 @@ from services.tts_factory import create_tts_service
 from utils.settings import settings
 
 
-SYSTEM_INSTRUCTION = """You are a helpful news assistant that provides the latest news updates.
-Your output will be converted to audio so don't include special characters in your answers.
-Be conversational and concise. Keep responses brief and clear."""
-
-
-async def run_bot(transport: BaseTransport, session_id: str = "default"):
-    logger.info(f"Starting news bot with session: {session_id}")
+async def run_bot(transport: BaseTransport, session_id: str = "default", system_prompt: str = None):
+    logger.info(f"Starting news bot, session: {session_id}, custom_prompt: {system_prompt is not None}")
 
     stt = DeepgramSTTService(api_key=settings.deepgram_api_key)
     tts = create_tts_service()
-    llm = NewsAgentLLMService(session_id=session_id)
+    llm = NewsAgentLLMService(session_id=session_id, system_prompt=system_prompt)
 
     context = LLMContext([
         {
-            "role": "system",
-            "content": SYSTEM_INSTRUCTION,
-        },
-        {
             "role": "user",
-            "content": "Start by greeting the user and asking what news they'd like to hear about.",
+            "content": "Start by greeting the user and introducing yourself based on your role.",
         }
     ])
     context_aggregator = LLMContextAggregatorPair(context)
